@@ -2,8 +2,6 @@ from rdkit import Chem
 from rdkit.Chem import rdDistGeom, AllChem, TorsionFingerprints
 from rdkit.Geometry.rdGeometry import Point3D
 import subprocess
-import cpeptools
-import cpeptools.cpeptools
 import os
 def create_conformers(is_restricted=False):
     # need this to ensure that double bonds are maintainied and right geometry

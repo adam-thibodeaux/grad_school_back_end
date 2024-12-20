@@ -6,7 +6,7 @@ import re
 import json
 import CDPL.Base as Base
 
-def generateConformationEnsembles(mol: Chem.BasicMolecule, conf_gen: ConfGen.ConformerGenerator) -> (int, int):
+def generateConformationEnsembles(mol: Chem.BasicMolecule, conf_gen: ConfGen.ConformerGenerator):
      """
      Generates a conformation ensemble for the argument molecule using the provided initialized ConfGen.ConformerGenerator instance.
 

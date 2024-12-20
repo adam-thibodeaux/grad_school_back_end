@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const rasInhibitor = require("../models/rasInhibitor");
 const fs = require("fs");
 const path = require("path");
+const mysql = require("mysql2");
+const execSync = require("child_process").execSync;
+const initRDKitModule = require("@rdkit/rdkit");
 const grabNamesMedChemExpress = async () => {
   await mongoose.connect("mongodb://localhost:27017/grad_school");
 
@@ -191,4 +194,136 @@ const dumpData = async () => {
   return;
 };
 
-dumpData();
+const convertSQLBindingAffinityData = async (userStr) => {
+  // const rdkit = await initRDKitModule();
+  // let inchiKey = "";
+  // let result;
+  const titles = [];
+  let count = 0;
+  let smilesStr = "";
+  const cids = [];
+  const pubMedEntries = [];
+  const aids = new Set();
+
+  if (userStr.split("-").length == 3) {
+    let result = await fetch(
+      `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchikey/${userStr}/property/title,canonicalsmiles/JSON`
+    );
+    result = await result.json();
+    for (let i = 0; i < result.PropertyTable.Properties.length; i++) {
+      const datum = result.PropertyTable.Properties[i];
+      cids.push(datum.CID);
+      titles.push(datum.Title);
+      if (!smilesStr.length) smilesStr = datum.CanonicalSMILES;
+    }
+  } else if (userStr.includes("InChI")) {
+    try {
+      const body = new FormData();
+      body.set("inchi", userStr);
+      let result = await fetch(
+        "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchi/property/title,canonicalsmiles/JSON",
+        {
+          method: "POST",
+          body,
+        }
+      );
+      result = await result.json();
+      for (let i = 0; i < result.PropertyTable.Properties.length; i++) {
+        const datum = result.PropertyTable.Properties[i];
+        cids.push(datum.CID);
+        titles.push(datum.Title);
+        if (!smilesStr.length) smilesStr = datum.CanonicalSMILES;
+      }
+    } catch (e) {}
+  } else {
+    try {
+      result = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${userStr}/property/title,canonicalsmiles/JSON`
+      );
+      result = await result.json();
+      for (let i = 0; i < result.PropertyTable.Properties.length; i++) {
+        const datum = result.PropertyTable.Properties[i];
+        cids.push(datum.CID);
+        titles.push(datum.Title);
+        if (!smilesStr.length) smilesStr = datum.CanonicalSMILES;
+      }
+    } catch (e) {
+      try {
+        const body = new FormData();
+        body.set("smiles", userStr);
+        result = await fetch(
+          "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/property/title,canonicalsmiles/JSON",
+          { method: "POST", body }
+        );
+        result = await result.json();
+        for (let i = 0; i < result.PropertyTable.Properties.length; i++) {
+          const datum = result.PropertyTable.Properties[i];
+          cids.push(datum.CID);
+          titles.push(datum.Title);
+          if (!smilesStr.length) smilesStr = datum.CanonicalSMILES;
+        }
+      } catch (e) {}
+    }
+  }
+  console.log("cids", cids);
+  for (let i = 0; i < Math.min(cids.length, 1); i++) {
+    const cid = cids[i];
+    let rows;
+    try {
+      let resultCid = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/assaysummary/JSON`
+      );
+      resultCid = await resultCid.json();
+      rows = resultCid.Table.Row;
+    } catch (e) {
+      continue;
+    }
+    const aidIdx = 0;
+    const outcomeIdx = 4;
+    const bindingIdx = 7;
+    const bindingValIdx = 8;
+    const descriptionIdx = 9;
+    const pubmedIdx = 11;
+
+    for (let j = 0; j < rows.length; j++) {
+      const row = rows[j].Cell;
+      if (
+        aids.has(row[aidIdx]) ||
+        row[outcomeIdx] != "Active" ||
+        !row[bindingIdx]
+      )
+        continue;
+      aids.add(row[aidIdx]);
+      count += 1;
+      const collatedData = {
+        active: row[outcomeIdx],
+        bindingAffinity: row[bindingIdx],
+        bindingVal: row[bindingValIdx],
+        description: row[descriptionIdx],
+        pubmedId: row[pubmedIdx],
+      };
+      const pubmedMatch = pubMedEntries.find(
+        (el) => el.pubmedId == row[pubmedIdx]
+      );
+      if (pubmedMatch) pubmedMatch.bindingData.push(collatedData);
+      else
+        pubMedEntries.push({
+          pubmedId: collatedData.pubmedId,
+          bindingData: [collatedData],
+        });
+    }
+  }
+  pubMedEntries.sort((a, b) => b.bindingData.length - a.bindingData.length);
+  for (let i = 0; i < Math.min(pubMedEntries.length, 1); i++) {
+    const pubMedEntry = pubMedEntries[i];
+    result = await fetch(
+      `http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${pubMedEntry.pubmedId}&retmode=JSON`
+    );
+    result = await result.json();
+    pubMedEntry.title = result.result[pubMedEntry.pubmedId].title;
+  }
+
+  return { titles, pubMedEntries, smilesStr, count };
+};
+
+module.exports = { convertSQLBindingAffinityData };

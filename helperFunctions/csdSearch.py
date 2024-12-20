@@ -89,4 +89,4 @@ def get_pdb():
         file.close()
     
 
-get_pdb()
+get_ccdc()

@@ -3,7 +3,9 @@ const mongoose = require("mongoose");
 const rasInhibitor = require("./models/rasInhibitor");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-
+const {
+  convertSQLBindingAffinityData,
+} = require("./helperFunctions/grabData.js");
 const main = async () => {
   await mongoose.connect("mongodb://localhost:27017/grad_school");
   console.log("connected to mongo");
@@ -67,6 +69,21 @@ const wrapper = () => {
       result.notes = result.notes.filter((note) => note != oldNote);
       await rasInhibitor.findByIdAndUpdate(drugId, { notes: result.notes });
       res.sendStatus(200);
+    } catch (err) {
+      console.log(err);
+      res.status(400).send(err);
+    }
+  });
+  app.post("/binding-data", async (req, res) => {
+    try {
+      const { smilesStr } = req.body;
+      console.log(smilesStr);
+      if (!smilesStr) {
+        return res.status(400).send("no smiles string provided");
+      }
+      data = await convertSQLBindingAffinityData(smilesStr);
+      console.log(data);
+      return res.status(200).send(data);
     } catch (err) {
       console.log(err);
       res.status(400).send(err);

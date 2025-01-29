@@ -8,6 +8,7 @@ import ast
 from rdkit.Chem import rdDistGeom, AllChem, TorsionFingerprints
 import rdkit.Chem as Chem
 import ast
+import gemmi
 input_struct = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb"
 #input dir need trailing backslash
 input_dir = "/Users/adam/Downloads/outputs_from_molec_replac/KOBE_TRIAL_1/"
@@ -50,11 +51,14 @@ def extract_info(string, ensemble_name, iteration, solu_dict):
     
 def main(input_struct=input_struct, input_dir=input_dir, output_dir=output_dir, should_calc_rmsd=False, is_serving=False, should_find_tfd=False, tfd_file_path=tfd_file_path):
     tfd_vals = {}
-    with open(tfd_file_path) as file:
-        temps = ast.literal_eval(file.read())
-        for temp in temps:
-            tfd_vals[temp[0]] = temp[1]
-        file.close()
+    try:
+        with open(tfd_file_path) as file:
+            temps = ast.literal_eval(file.read())
+            for temp in temps:
+                tfd_vals[temp[0]] = temp[1]
+            file.close()
+    except:
+        pass
     solu_dict = {}
     temp_solu_dict = {}
     print(input_dir)
@@ -96,16 +100,20 @@ def main(input_struct=input_struct, input_dir=input_dir, output_dir=output_dir, 
             try:
                 match_llg = [llg for llg in solu_val["llg"] if llg[0] == iterat][0]
                 temp_flat["llg"] = match_llg[1]
+                temp_flat["tfz_cross_llg"] = float(temp_flat["llg"]) * float(temp_flat["tfz"])
+                
             except:
                 ""
             try:
                 match_space_group = [space_group for space_group in solu_val["space_group"] if space_group[0] == iterat][0]
                 temp_flat["space_group"] = match_space_group[1]
+                temp_flat["num_sg"] = gemmi.find_spacegroup_by_name(temp_flat["space_group"]).number
+                temp_flat["llg_cross_sg"] = float(temp_flat["llg"]) * (float(temp_flat["num_sg"]) **2)
             except:
                 ""
             flat_solu_dict.append(temp_flat)
     df = pd.DataFrame(flat_solu_dict)
-    df.sort_values("llg", inplace=True, ascending=False)
+    df.sort_values("llg_cross_sg", inplace=True, ascending=False)
     if is_serving:
         app = Dash(__name__)
         app.layout = dash_table.DataTable(df.to_dict('records'), style_cell={'textAlign': 'left',
@@ -161,6 +169,7 @@ def main_nested(input_struct=input_struct, input_dir=input_dir, output_dir=outpu
                 try:
                     match_llg = [llg for llg in solu_val["llg"] if llg[0] == iterat][0]
                     temp_flat["llg"] = match_llg[1]
+                    
                 except:
                     ""
                 try:
@@ -243,6 +252,6 @@ def extract_rmsd_only(compare_struct_path, input_dir, should_calc_tfd=False, sho
     app.run(debug=True)
 
 if __name__ == "__main__":
-    main(should_calc_rmsd=False, is_serving=True, input_dir="/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CONFORGE/", should_find_tfd=False)
+    main(should_calc_rmsd=False, is_serving=True, input_dir="/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CONFORGE_TRIAL_1_20A/", should_find_tfd=False)
     # extract_rmsd_only("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb", "/Users/adam/Downloads/inputs_for_molec_replac/PAR_CUSTOM_CONF_TRIAL_5/ROUND_10/", should_calc_tfd=True, should_reset=False, is_serving=True, sort_label="tfd")
     

@@ -13,11 +13,11 @@ def calc_rmsd_pdb(input_struct_dir, compare_struct_dir):
     return superimposer.rms
     
 def calc_rmsd(input_struct_path, compare_struct_path):
-    print(input_struct_path, compare_struct_path)
-    input_mol = Chem.MolFromPDBFile(input_struct_path, sanitize=False, proximityBonding=False)
+    input_mol = Chem.MolFromPDBFile(input_struct_path)
     compare_mol = Chem.MolFromPDBFile(compare_struct_path)
     # input_mol = AllChem.AssignBondOrdersFromTemplate(compare_mol, input_mol)
     return rdMolAlign.GetBestRMS(input_mol, compare_mol)
 
+
 if __name__ == "__main__":
-    print(calc_rmsd("/Users/adam/Downloads/outputs_from_molec_replac/phenix_refine/Refine_53/parateprevir_refine_053.pdb", "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb"))
+    print(calc_rmsd("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha_reordered_2.pdb","/Users/adam/Downloads/outputs_from_molec_replac/PAR_CUSTOM_CONF_TRIAL_2_15A/ROUND_10/paritaprevir_torsion_angle_perturb_32_out.1_refine_001.pdb"))

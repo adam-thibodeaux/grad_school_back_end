@@ -1,136 +1,60 @@
-import gemmi
+# import gemmi
 from rdkit import Chem
 from rdkit.Chem import rdMolTransforms, AllChem, rdForceFieldHelpers, rdchem, rdmolops
-from rdkit.ForceField import rdForceField
+# from rdkit.ForceField import rdForceField
 import extract_sols as extract
 import matplotlib.pyplot as plt
 import numpy as np
-import time
-import math
+# import time
+# import math
 import remove_model
-import extract_sols
+# import extract_sols
 import os
 import remove_model
+import show_dihedral_change
+import subprocess
 def intersection(lst1, lst2):
     lst3 = [value for value in lst1 if value in lst2]
     return lst3
 
-# def calculate_intensity(map,x,y,z):
-    
-allowable_dihedral_angles = [
-   
-     #ninth one, pyrole ring
-    # ["O1","C17","N1","C1"],
-    
-     # tenth one, planarization of pyridine ring
-    ["C1","C2","O7","C28"],
-    #eighth one, pyridine ring
-    ["N1","C1","C2","O7" ],
-     #first one, this is for the pyrimdine side chain as a while
-    ["C15","C16", "N4", "C18"],
-    #second one,  this is for the pyrimidine side chain amide bond angle
-    ["O6","C18", "C19", "C20"],
-
-     #fourth one, this is for the sulfone side chain
-    ["N2","C6","C24","N3"],
-    #fourth one part 2, this is the cyclopropane ring on sulfone side chain
-    ["C24","N3","S1","C25"],
-    #fifth one, this is for the amide link in macrocycle
-    ["C8","C6","N2","C5"],
-     
-    # ["C16", "N4", "C18", "C19"],
-    #third one, this is for the planarization of pyrimidine side chain
-    # ["C15","C16", "N4", "C18"],
-    #    ["N5","C19","C18","N4"],
-   
-    # #fourth one part 3, this is redoing sulfone side chain
-    # ["N2","C6","C24","N3"],
-    # ["N1","C17","C16", "N4"],
-   
-    
-     #seventh one, second part of distal side of macrocycle core
-     ["C17","C16","C15","C14"],
-    # ["C11","C12","C13","C14"],
-    # sixth one, distal side of macrocycle
-    # ["C8","C9","C10","C11"],
-    
-    ["C15","C14","C13", "C12"],   
-    ["C10","C11","C12","C13"],
-     #ninth one, pyrole ring, again
-    ["O1","C17","N1","C1"],
-      #seventh one, second part of distal side of macrocycle core
-    # ["C10","C11","C12","C13"],
-   
-    # ["O2","C5","N2","C6"]
-    # ["C3","C2","O7", "C28"],
-    # ["C1", "C2", "O7", "C28"]
-    # ["C13","C14","C15","C16"]
-    # ["C5","N2","C6","C24"]
-    # ["C8","C9","C10","C11"]
-    # ["H41", "N2","C5","O2"]
-    # ["N1", "C4","C5", "O2" ]
-    # ["H41", "N2","C6","C24"]
-    # ["N1", "C4", "C5", "N2"]
-    # ["C4", "N1", "C17", "C16"]
-    # ["C13", "C14", "C15", "C16"]
-    # ["C4","N1","C1","C2", ]
-    # ["N1","C1","C2","O7" ]
-    # ["C3","C2", "C1", "N1"]
-# ["C5","N2","C6","C7"]
-# ["N1","C1","C2","C17" ]
-# ["C9","C10","C11","C12"]
-
-                             ]
-split_mol_indices = [
-    # tenth one, planarization of pyridine ring
-    [],
-    #eighth one, pyridine ring
-    [["C3","C4"]],
-    #first one, this is for the pyrimidine side chain amide bond angle
-    [["C15", "C14"]],
-    ##second one, this is for the pyrimdine side chain as a whole
-    [],
-    #fourth one, this is for the sulfone side chain
-    [["N2","C5"]],
-    #fourth one part 2, this is the cyclopropane ring on sulfone side chain
-    [],
-    #fifth one, this is for the amide link in macrocycle core
-    [["C5","C4"]],
-    #ninth one, pyrole ring
-    # [["O7","C2"],["C4","C5"]],
-    #third one, this is for the planarization of pyrimidine side chain
-    # [["C15","C14"]],
-    # [],
-    
-    
-     
-    #fourth one part 3, more planarization of pyrimidine side chain
-    # [["C15", "C14"]],
-    
-   
-    #seventh one, second distal part of macrocycle core
-    [["C14","C13"]],
-    #sixth one, distal macrocycle core
-    [["C12","C11"]],
-    [["C13","C14"]],
-    #ninth one, pyrole ring, again
-    [["O7","C2"],["C4","C5"]],
-     
-    #seventh one, second distal part of macrocycle core
-    # [["C15","C14"]],
-   
-    
-    
-    
+# 0,8,9,12,6,11,4,5,
+allowable_dihedral_angles_pac = []
+allowable_dihedral_angles_pac = [
+    #0 -pyrole ring on side chain
+    (["C10","N2","C9","C8"],[],False),
+    #1 - pyrimidine? in macrocycle angle
+    (["C3","N4","C22","N1"],[["C23","C24"]], False),
+    #2 - macrocycle core
+    (["H5","C6","C20","C21"],[["C14","C21"]],False),
+    #3 - other part of macrocycle core
+    (["C16","O1","C14","H20"],[["C20","C21"]],False),
+    #4 - pyrole ring perpindicularity
+    (["O3","C8","C9","N2"],[],False),
+    #5 - pyrloe ring half axis
+    (["C9","N2","C13","C12"],[["N2","C10"]],False),
+    #6
+    "REFINE",
+    #7 - planarization of amine linked aryl groups
+    (["C17","N3","C22","N4"],[["C28","C16"],["N1","C22"]],False)
     ]
-set_dihedral_angles = [
-    ["C13", "C14", "C15","C16"],
-    ["C5","N2","C6","C24"]
-                       ]
-allowed_neighborhoods = [
-    ["O7","C28","C29","C30","C31","C32","C33","C34","C35","C36","C37","C38","C39","C40", "N7"],
-    ["N4", "O6", "N6", "C18","C19","C20","C21","C22","C23"],
-    ["C24","C25","C26","S1","O4","O5", "N3"]
+#this is after reordering to view easier in chimera, functionally equivalent dihedrals
+allowable_dihedral_angles_pac = [
+#0 -pyrole ring on side chain
+    (["C1","N1","C5","C6"],[],False),
+    #1 - pyrimidine? in macrocycle angle
+    (["C12","N2","C15","N3"],[["C16","C18"]], False),
+    #2 - macrocycle core
+    (["H20","C14","C22","C27"],[["C26","C27"]],False),
+    #3 - other part of macrocycle core
+    (["C20","O3","C26","H29"],[["C22","C27"]],False),
+    #4 - pyrole ring perpindicularity
+    (["O1","C6","C5","N1"],[],False),
+    #5 - pyrloe ring half axis
+    (["C5","N1","C1","C3"],[["N1","C2"]],False),
+    #6
+    "REFINE",
+    #7 - planarization of amine linked aryl groups
+    (["C17","N3","C22","N4"],[["C28","C16"],["N1","C22"]],False)
 ]
 all_conformers = []
 input_mtz_path = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_CONFORGE_TRIAL_4/paritaprevir_conforge_4/paritaprevir_conforge_4_out.1.mtz"
@@ -340,6 +264,7 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
     # for found_dihedral in found_dihedrals:
     #     orig_dihedral_angles.append(rdMolTransforms.GetDihedralDeg(base_mol.GetConformer(), *found_dihedral))
     for i in range(len(dihedral_angle_atom_indices)):
+        should_valid_struct = True
         # angle = orig_dihedral_angles[i]
         angle_indices = dihedral_angle_atom_indices[i]
         # print(angle)
@@ -352,9 +277,10 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
         try:
             # setDihedralForOneBranch(edit_mol, edit_mol.GetConformer(comp_id_pos), atom_indices, perturb_angle)
             rdMolTransforms.SetDihedralDeg(base_mol.GetConformer(comp_id_pos),*angle_indices, perturb_angle)
-            Chem.MolToPDBFile(base_mol, f"{output_conf_dir}paritaprevir_torsion_angle_perturb_{count}.pdb", confId=comp_id_pos)
+            Chem.MolToPDBFile(base_mol, f"{output_conf_dir}pacritinib_torsion_angle_perturb_{count}.pdb", confId=comp_id_pos)
             return base_mol
         except Exception as e:
+            print(e)
             print("failed setting explicit dihedral angle, using MMFF optimization")
             # molec_props = rdForceFieldHelpers.MMFFGetMoleculeProperties(base_mol)
             # force_field = rdForceFieldHelpers.MMFFGetMoleculeForceField(base_mol, molec_props, confId=comp_id_pos)
@@ -375,7 +301,11 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
             
                 ba.SetNumExplicitHs(ba.GetNumExplicitHs() + 1)
                 ea.SetNumExplicitHs(ea.GetNumExplicitHs() + 1)
-                Chem.SanitizeMol(edit_mol)
+                try:
+                    Chem.SanitizeMol(edit_mol)
+                except:
+                    print("failed sanitization #1")
+                    pass
             setDihedralForOneBranch(edit_mol, edit_mol.GetConformer(comp_id_pos), angle_indices, perturb_angle)
             # rdMolTransforms.SetDihedralDeg(edit_mol.GetConformer(comp_id_pos),*angle_indices,perturb_angle)
             for split_mol_idx in split_idx_atom_names:
@@ -396,10 +326,10 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
                     start_coords = np.array(conf.GetAtomPosition(start))
                     end_coords = np.array(conf.GetAtomPosition(end))
                     dist = np.linalg.norm(end_coords-start_coords)
-                    if dist > 3:
-                        print(f'suspicious bond distance {dist} angstroms for: paritaprevir_torsion_angle_perturb_{count}.pdb')
-                        # print('skipping this one')
-                        # return
+                    if dist > 3 and should_valid_struct:
+                        print(f'suspicious bond distance {dist} angstroms for: pacritinib_torsion_angle_perturb_{count}.pdb')
+                        print('skipping this one')
+                        return
                 # Chem.SanitizeMol(edit_mol, )
             # edit_mol = AllChem.AssignBondOrdersFromTemplate(reference_mol, edit_mol)
             
@@ -408,10 +338,13 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
             # edit_mol.GetConformer(comp_id_pos).SetAtomPosition(ei,ea_coords)
             # print(ba_coords.x)
             # print(ea_coords.x)
-            Chem.SanitizeMol(edit_mol)
-            rdForceFieldHelpers.MMFFOptimizeMolecule(edit_mol)
+            try:
+                Chem.SanitizeMol(edit_mol)
+                rdForceFieldHelpers.MMFFOptimizeMolecule(edit_mol)
+            except:
+                print('failed sanitization #2 or MMMF optimization, continuing anyway')
             
-            Chem.MolToPDBFile(edit_mol, f"{output_conf_dir}paritaprevir_torsion_angle_perturb_{count}.pdb", confId=comp_id_pos)
+            Chem.MolToPDBFile(edit_mol, f"{output_conf_dir}pacritinib_torsion_angle_perturb_{count}.pdb", confId=comp_id_pos)
             return edit_mol
 
 
@@ -485,6 +418,14 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
     ## perturb -> how much to perturb?
     ##rerun through phaser
 
+def shell_source(script):
+    """Sometime you want to emulate the action of "source" in bash,
+    settings some environment variables. Here is a way to do it."""
+    pipe = subprocess.Popen(f"/bin/bash {script}", stdout=subprocess.PIPE, shell=True)
+    output = pipe.communicate()[0]
+    env = dict((line.split("=", 1) for line in output.splitlines()))
+    os.environ.update(env)
+
 def generate_conformers(count, step, dihedral_angle_atom_names, split_idx_atom_names, input_struct_path, should_proximity_bond=False):
     for run_num in range(0,360,step):
         count += 1
@@ -527,10 +468,18 @@ def extract_llg_and_tfz_and_update_init_path(input_dir, num_to_include=1):
     print(data.to_string())
     set_input_path_list = set()
     i = 0
+    file_prefix = input_dir.split("PHASER")[0]
     while len(set_input_path_list) < num_to_include and i < len(data):
+        split_input = data.iloc[i]["name"].split("_out")[0]
+        try:
+            Chem.MolFromPDBFile(f"{file_prefix}{split_input}.pdb",removeHs=False, proximityBonding=True, sanitize=True)
+            print(f"succeded loading PDB for {file_prefix}")
+        except:
+            i+= 1
+            continue
         set_input_path_list.add(data.iloc[i]["name"].split("_out")[0])
         i += 1
-    file_prefix = input_dir.split("PHASER")[0]
+    
     # return [f{file_prefix}]
     return [f"{file_prefix}{x}.pdb" for x in set_input_path_list]
     ret_list = [input_dir + data.iloc[0]["name"].split("_out")[0] +"/"+ data.iloc[0]["name"]+".pdb",
@@ -539,30 +488,67 @@ def extract_llg_and_tfz_and_update_init_path(input_dir, num_to_include=1):
     return ret_list[:num_to_include]
    
 input_struct_path_list = []
-for i in range(len(allowable_dihedral_angles)):
-    
-    input_struct_path =  "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CONFORGE/paritaprevir_conforge_13/paritaprevir_conforge_13_out.1.pdb"
-    input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta.mtz"
-    count = 0
-    dihedral_angle = allowable_dihedral_angles[i]   
-    split_idx = split_mol_indices[i]
-    output_conf_dir = f"/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CUSTOM_CONF/ROUND_{i}/"
-    if not os.path.isdir(output_conf_dir):
-        os.mkdir(output_conf_dir)
-    if not os.path.isdir(output_conf_dir + "PHASER"):
-        os.mkdir(output_conf_dir + "PHASER")
-    if i > 0:
-        #find top5 from previous round based on tfd/rmsd, loop through with step=5
-        for input_struct_path_individ in input_struct_path_list:
+#orig below
+# perturb_path = [0,1,2,3,4,0,5,3,2,6,3,2,5,6]
+perturb_path = [4,0,1,2,3,5,3,2,0,4,5,6]
+for i in range(len(perturb_path)):
+    should_skip_conf_gen = False
+    dihedral_angle = allowable_dihedral_angles_pac[perturb_path[i]][0]
+    split_atom_names = allowable_dihedral_angles_pac[perturb_path[i]][1]
+    should_use_custom_dihed = allowable_dihedral_angles_pac[perturb_path[i]][2]
+    input_struct_path =  "/Users/adam/Downloads/outputs_from_molec_replac/PAC_CONFORGE_TRIAL_1_20A/pacritnib_conforge_284/pacritnib_conforge_284_out.1.pdb"
+    input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/pacritinib_20A.mtz"
+    monomer_library = "/Users/adam/Downloads/outputs_from_molec_replac/phenix_refine_pac/eLBOW_1/elbow.UNK.pacritinib_pdb.001.cif"
+    count = 0   
+    output_conf_dir = f"/Users/adam/Downloads/outputs_from_molec_replac/PAC_CUSTOM_CONF_TRIAL_1_20A/ROUND_{i}/"
 
+    if os.path.isdir(output_conf_dir) and len(os.listdir(output_conf_dir)) > 2:
+        print(f"round {i} already complete, skipping conformer_generation")
+        should_skip_conf_gen = True
+    else:
+        os.makedirs(output_conf_dir, exist_ok=True)
+        os.makedirs(output_conf_dir + "PHASER", exist_ok=True)
+    if allowable_dihedral_angles_pac[perturb_path[i]] == "REFINE":
+        print('here')
+        for k in range(len(input_struct_path_list)):
+            input_struct_path_ind = input_struct_path_list[k]
+            print(input_struct_path_ind)
+            fixed_input_struct_path = output_conf_dir.split("ROUND")[0]
+            fixed_input_struct_path += f"ROUND_{i-1}/PHASER/"
+            input_file_name = input_struct_path_ind.split("/")[-1].split(".pdb")[0]
+            fixed_input_struct_path += input_file_name
+            fixed_input_struct_path += "/"
+            fixed_input_struct_path += input_file_name
+            fixed_input_struct_path += "_out.1.pdb"
+            source_str = "/Users/adam/phenix-1.21.2-5419/phenix_env.sh"
+            prefix = input_struct_path_ind.split("/")[-1].split(".pdb")[0]
+            if f"{prefix}_refine_001.mtz" in os.listdir(output_conf_dir):
+                print('refinement already done for this structure, skipping')
+                continue
+            refine_str = f"{fixed_input_struct_path} {input_mtz} {monomer_library} nproc=4 output.prefix={prefix}_refine main.number_of_macro_cycles=5 gui.base_output_dir={output_conf_dir}"
+            #run refine on each of these input_structs
+            shell_source(source_str)
+            proc = subprocess.run([f"cd {output_conf_dir} && /Users/adam/phenix-1.21.2-5419/phenix_bin/phenix.refine " + refine_str], capture_output=True, shell=True)
+            print("phenix.refine " + refine_str)
+            # print(proc.stderr.decode().strip())
+            # print(proc.stdout.decode().strip())
+            print('finished refine')
+        input_struct_path_list = []
+        for f in os.listdir(output_conf_dir):
+            if ".pdb" in f:
+                input_struct_path_list.append(f"{output_conf_dir}{f}")
+        continue
+    if i > 0:
+        for input_struct_path_individ in input_struct_path_list:
+            if should_skip_conf_gen: continue
             input_struct_path = input_struct_path_individ
-            if i <= 1:
-                count = generate_conformers(count=count, step=20, dihedral_angle_atom_names=dihedral_angle,split_idx_atom_names=split_idx, input_struct_path=input_struct_path, should_proximity_bond=True)
+            print(f"starting conformer generation for {input_struct_path}")
+            if i <= 1 and not should_use_custom_dihed:
+                count = generate_conformers(count=count, step=10, dihedral_angle_atom_names=dihedral_angle,split_idx_atom_names=split_atom_names, input_struct_path=input_struct_path, should_proximity_bond=True)
+            elif should_use_custom_dihed:
+                count = show_dihedral_change.main(input_struct = input_struct_path_individ, atom_names = dihedral_angle,adjacent_atom_names=split_atom_names[0],output_path=output_conf_dir, count = count, num_points=20)
             else:
-                count = generate_conformers(count=count, step=20, dihedral_angle_atom_names=dihedral_angle,split_idx_atom_names=split_idx, input_struct_path=input_struct_path, should_proximity_bond=False)
-        # input_struct_path_list = list(extract_rmsd_and_update_init_path(input_struct_path))
-        input_struct_path_list = output_conf_dir
-        # for j in range(len(input_struct_path_list)):
+                count = generate_conformers(count=count, step=10, dihedral_angle_atom_names=dihedral_angle,split_idx_atom_names=split_atom_names, input_struct_path=input_struct_path, should_proximity_bond=True)
         timers = []
         sorted_output_conf = []
         for j in os.listdir(output_conf_dir):
@@ -571,7 +557,7 @@ for i in range(len(allowable_dihedral_angles)):
         for k in range(len(sorted_output_conf)):
             j = sorted_output_conf[k]
             phaser_input = output_conf_dir + j
-            if 'paritaprevir' not in phaser_input: continue
+            if ".pdb" not in phaser_input: continue
             phaser_name = phaser_input.split("/")[-1].replace(".pdb","")
             if os.path.isdir(output_conf_dir + "PHASER/" + phaser_name):
                 print(f'PHASER already done for {phaser_name}, skipping, round {i}')
@@ -582,14 +568,13 @@ for i in range(len(allowable_dihedral_angles)):
             print(f'finished PHASER for {phaser_name} in {timer} seconds')
             print(f'approximate time remaining for this round {i} is: {(sum(timers)/len(timers)) * (len(sorted_output_conf) - k)} seconds')
         if i <= 6:
-            input_struct_path_list =extract_llg_and_tfz_and_update_init_path(output_conf_dir + "PHASER/", num_to_include=3)
+            input_struct_path_list = extract_llg_and_tfz_and_update_init_path(output_conf_dir + "PHASER/", num_to_include=4)
         else:
-            input_struct_path_list =extract_llg_and_tfz_and_update_init_path(output_conf_dir + "PHASER/", num_to_include=3)
+            input_struct_path_list = extract_llg_and_tfz_and_update_init_path(output_conf_dir + "PHASER/", num_to_include=4)
     else:
-        generate_conformers(count=count, step=20, dihedral_angle_atom_names=allowable_dihedral_angles[i], split_idx_atom_names=split_mol_indices[i], input_struct_path=input_struct_path, should_proximity_bond=True)
-        # input_struct_path_list = list(extract_rmsd_and_update_init_path(input_struct_path))
+        print(f"starting initial conformer generation")
+        generate_conformers(count=count, step=20, dihedral_angle_atom_names=dihedral_angle, split_idx_atom_names=split_atom_names, input_struct_path=input_struct_path, should_proximity_bond=True)
         input_struct_path_list = output_conf_dir
-        # for j in range(len(input_struct_path_list)):
         timers = []
         sorted_output_conf = []
         for j in os.listdir(output_conf_dir):
@@ -598,13 +583,13 @@ for i in range(len(allowable_dihedral_angles)):
         for k in range(len(sorted_output_conf)):
             j = sorted_output_conf[k]
             phaser_input = output_conf_dir + j
-            if 'paritaprevir' not in phaser_input: continue
+            if ".pdb" not in phaser_input: continue
             phaser_name = phaser_input.split("/")[-1].replace(".pdb","")
             if os.path.isdir(output_conf_dir + "PHASER/" + phaser_name):
                 print(f'PHASER already done for {phaser_name}, skipping, round {i}')
                 continue
             print('starting PHASER for ' + phaser_name)
-            timer = remove_model.main_tfd(input_pdb=phaser_input,output_dir=output_conf_dir+"PHASER/"+phaser_name+"/", out_dir= phaser_name)
+            timer = remove_model.main_tfd(input_pdb=phaser_input,output_dir=output_conf_dir+"PHASER/"+phaser_name+"/", out_dir= phaser_name, input_mtz_tfd=input_mtz)
             timers.append(timer)
             print(f'finished PHASER for {phaser_name} in {timer} seconds')
             print(f'approximate time remaining for this round {i} is: {(sum(timers)/len(timers)) * (len(sorted_output_conf) - k)} seconds')
@@ -663,7 +648,7 @@ for i in range(len(allowable_dihedral_angles)):
 # # # after first run initialization
 # # count = 0
 # # for f in os.listdir("/Users/adam/Downloads/inputs_for_molec_replac/PAR_CUSTOM_CONF_TRIAL_3/ROUND_2"):
-# #     if "pdb" not in f.split(".")[-1]: continue
+# #     if ".pdb" not in f.split(".")[-1]: continue
 # #     input_struct_path = f"/Users/adam/Downloads/inputs_for_molec_replac/PAR_CUSTOM_CONF_TRIAL_3/ROUND_2/{f}"
 
 # #     for run_num in range(0,360):

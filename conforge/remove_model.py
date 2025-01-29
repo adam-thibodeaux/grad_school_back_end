@@ -16,9 +16,9 @@ import math
 # dir_1 = "/Users/adam/Downloads/inputs_for_molec_replac/MCMM/Par_ensembles/Par_RCE_1-5A_pdb/"
 # dir_2 = "/Users/adam/Downloads/inputs_for_molec_replac/MCMM/Par_ensembles/Par_RCE_1-25A_pdb/"
 # fixed_ens_dir needs trailing backslash
-fixed_ens_dir = "/Users/adam/Documents/code/grad_school/back_end/conforge/para_conformers_large_trial_2/"
-input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta.mtz"
-output_dir = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_EKTDG/"
+fixed_ens_dir = "/Users/adam/Downloads/inputs_for_molec_replac/GRAZ_CONFORGE_TRIAL_1/"
+input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/grazoprevir.mtz"
+output_dir = "/Users/adam/Downloads/outputs_from_molec_replac/GRAZ_CONFORGE_TRIAL_1/"
 frag_ensemble_prefix = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_frags/paritaprevir_alpha_frag_"
 model_regex = re.compile("MODEL.*\n")
 end_regex = re.compile("ENDMDL\nEND")
@@ -47,7 +47,7 @@ def remove_ancillary(file_str):
     file_str = re.sub(end_regex, "END", file_str)
     return file_str
 
-def search_with_file(input_mtz, input_pdb, out_dir, identity=1, is_frag=False, frag_ensemble_line="", frag_search_line="", frag_hetatm_line="", output_dir=output_dir, should_debug=False):
+def search_with_file(input_mtz, input_pdb, out_dir, identity=1, is_frag=False, frag_ensemble_line="", frag_search_line="", frag_hetatm_line="", output_dir=output_dir, should_debug=False, high_resolution_limit=0.1):
    
     # need this to ensure that double bonds are maintainied and right geometry
    
@@ -104,7 +104,7 @@ def search_with_file(input_mtz, input_pdb, out_dir, identity=1, is_frag=False, f
     PURGE RNP ENABLE OFF
     PACK SELECT ALL
     PACK CUTOFF 100
-    ELLG TARGET 100
+    ELLG TARGET 225
     SGALTERNATIVE SELECT ALL
     XYZOUT ON ENSEMBLE ON
     XYZOUT ON PACKING ON 
@@ -113,6 +113,7 @@ def search_with_file(input_mtz, input_pdb, out_dir, identity=1, is_frag=False, f
     ZSCORE USE OFF
     ROOT {output_dir}/{out_dir}_out
     SEARCH PRUNE OFF
+    RESOLUTION HIGH {high_resolution_limit}
     SEARCH ENSEMBLE par
     SEARCH METHOD FULL
     eof"""
@@ -175,26 +176,33 @@ def main(input_mtz=input_mtz, fixed_ens_dir=fixed_ens_dir, output_dir=output_dir
     #     print(f"Average time of PHASER run for this set: {sum(times)/len(times)} seconds")
     #     print(f"finished PHASER for frag_ensemble {str_combo} in {timer} seconds.")
 
-def main_tfd(input_pdb, out_dir, output_dir, input_mtz_tfd=input_mtz, should_debug=False):
+def main_tfd(input_pdb, out_dir, output_dir, input_mtz_tfd=input_mtz, should_debug=False, high_resolution_limit = 0.1):
     # print(f"starting phaser for {input_pdb.split('/')[-1]}")
-    return search_with_file(input_mtz=input_mtz_tfd, input_pdb=input_pdb, out_dir=out_dir, output_dir=output_dir, should_debug=should_debug)
+    return search_with_file(input_mtz=input_mtz_tfd, input_pdb=input_pdb, out_dir=out_dir, output_dir=output_dir, should_debug=should_debug, high_resolution_limit = high_resolution_limit)
   
 if __name__ == "__main__":
-    output_dir = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CONFORGE/"
-    input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta.mtz"
+    output_dir = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CONFORGE_TRIAL_1_20A/"
+    input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta_20A.mtz"
+    input_dir = "/Users/adam/Downloads/inputs_for_molec_replac/PAR_BETA_CONFORGE_TRIAL_1"
     sorted_dir_list = []
-    for f in os.listdir("/Users/adam/Documents/code/grad_school/back_end/conforge/para_conformers_large_trial_2"):
+    for f in os.listdir(input_dir):
+        # if int(f.split("_")[-1].split(".pdb")[0]) > 350:
+            # continue
         sorted_dir_list.append(f)
-    sorted_dir_list = sorted(sorted_dir_list)
+        
+    sorted_dir_list = sorted(sorted_dir_list, key= lambda x : int(x.split("_")[-1].split(".pdb")[0]) )
     timers = []
     for i in range(len(sorted_dir_list)):
         f = sorted_dir_list[i]
-        input_pdb =f"/Users/adam/Documents/code/grad_school/back_end/conforge/para_conformers_large_trial_2/{f}"
+        input_pdb =f"{input_dir}/{f}"
         phaser_name = f.split('.pdb')[0]
         new_output_dir = output_dir + phaser_name
+        if os.path.exists(new_output_dir):
+            print(f"PHASER already complete for {phaser_name}, skipping...")
+            continue
         
         print(f'starting PHASER for {phaser_name}')
-        timer = main_tfd(input_pdb=input_pdb, out_dir=phaser_name, output_dir=new_output_dir, input_mtz_tfd=input_mtz)
+        timer = main_tfd(input_pdb=input_pdb, out_dir=phaser_name, output_dir=new_output_dir, input_mtz_tfd=input_mtz, high_resolution_limit=1.0, should_debug=False)
         timers.append(timer)
         print(f'finished PHASER for {phaser_name} in {timer} seconds')
         print(f"average time for PHASER runs so far: {sum(timers)/len(timers)} seconds")

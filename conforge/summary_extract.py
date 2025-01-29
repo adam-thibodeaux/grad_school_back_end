@@ -4,8 +4,8 @@ import pandas as pd
 import re
 import rmsd_calc
 import matplotlib.pyplot as plt
-input_dir = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CUSTOM_CONF/"
-reference_struct_path = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta.pdb"
+input_dir = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_CUSTOM_CONF_TRIAL_2_20A/"
+reference_struct_path = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha_reordered_2.pdb"
 dir_dict = {}
 for f in os.listdir(input_dir):
     if "OLD" in f or "ROUND" not in f: continue
@@ -38,12 +38,17 @@ for i in range(len(dir_dict.values())):
         rmsd_3 = rmsd_calc.calc_rmsd(input_dir + key + "/" + data_3["name"].split("_out")[0] + ".pdb", reference_struct_path)
         top_1 = {"top solution 1": rmsd_1, "top solution 2": rmsd_2, "top solution 3": rmsd_3}
     except:
-        rmsd_1 = rmsd_calc.calc_rmsd_pdb(input_dir + key + "/" + data_1["name"].split("_out")[0] + ".pdb", reference_struct_path)
-        rmsd_2 = rmsd_calc.calc_rmsd_pdb(input_dir + key + "/" + data_2["name"].split("_out")[0] + ".pdb", reference_struct_path)
-        rmsd_3 = rmsd_calc.calc_rmsd_pdb(input_dir + key + "/" + data_3["name"].split("_out")[0] + ".pdb", reference_struct_path)
-        top_1 = {"top solution 1": rmsd_1, "top solution 2": rmsd_2, "top solution 3": rmsd_3}
+        # top_1 = {"top solution 1": 0, "top solution 2": 0, "top solution 3": 0}
+        try:
+            rmsd_1 = rmsd_calc.calc_rmsd_pdb(input_dir + key + "/" + data_1["name"].split("_out")[0] + ".pdb", reference_struct_path)
+            rmsd_2 = rmsd_calc.calc_rmsd_pdb(input_dir + key + "/" + data_2["name"].split("_out")[0] + ".pdb", reference_struct_path)
+            rmsd_3 = rmsd_calc.calc_rmsd_pdb(input_dir + key + "/" + data_3["name"].split("_out")[0] + ".pdb", reference_struct_path)
+            top_1 = {"top solution 1": rmsd_1, "top solution 2": rmsd_2, "top solution 3": rmsd_3}
+        except:
+            top_1 = {"top solution 1": 0, "top solution 2": 0, "top solution 3": 0}
     # top_1 = {"tfz": data_1["tfz"], "llg": data_1["llg"], "rmsd": rmsd_1}
-    # top_1 = {"top solution 1": data_1["llg"], "top solution 2": data_2["llg"], "top solution 3": data_3["llg"]}
+    top_2 = {"top solution 1": data_1["llg"], "top solution 2": data_2["llg"], "top solution 3": data_3["llg"]}
+    top_3 = {"top solution 1": data_1["tfz"], "top solution 2": data_2["tfz"], "top solution 3": data_3["tfz"]}
     # top_1 = {"top solution 1": rmsd_1, "top solution 2": rmsd_2, "top solution 3": rmsd_3}
     # top_2 = {"top solution 2": rmsd_2}
     # top_3 = {"top solution 3": rmsd_3}
@@ -52,16 +57,16 @@ for i in range(len(dir_dict.values())):
     # # top_3 = {"tfz": data_3["tfz"], "llg": data_3["llg"], "rmsd": rmsd_3}
     # top_3 = {"rmsd": rmsd_3,  "tfz": data_3["tfz"]}
     list_dir_1.append(top_1)
-    # list_dir_2.append(top_2)
-    # list_dir_.append(top_3)
+    list_dir_2.append(top_2)
+    list_dir_3.append(top_3)
 
 data_1 = pd.DataFrame(list_dir_1)
-# data_2 = pd.DataFrame(list_dir_2)
-# data_3 = pd.DataFrame(list_dir_3)
+data_2 = pd.DataFrame(list_dir_2)
+data_3 = pd.DataFrame(list_dir_3)
 
 data_1.plot()
-# data_2.plot()
-# data_3.plot()
+data_2.plot()
+data_3.plot()
 plt.show()
 
 # print(dir_dict)

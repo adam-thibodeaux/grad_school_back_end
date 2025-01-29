@@ -1,5 +1,5 @@
 import re
-from Bio.PDB import PDBIO, Structure, Model, Chain, Atom, PDBParser
+from Bio.PDB import PDBIO, Structure, Model, Chain, Atom, PDBParser, Residue, Select
 import json
 
 input_file_name = "./paritaprevir_conformers_trial_2.pdb"
@@ -39,25 +39,61 @@ def split_native_pdb():
             string += "\n".join(datum)
             file.write(string)
 def create_native_pdb():
-    original_pdb_file = "/Users/adam/Downloads/kobe0065.pdb"
+    original_pdb_file = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb"
     parser = PDBParser()
-    pdb_struct = parser.get_structure(id="UNK", file=original_pdb_file)
+    pdb_struct = Structure.Structure("paritaprevir_alpha")
+    # model = Model.Model(1)
+    # chain = Chain.Chain(1)
+    # pdb_struct.add(model)
+    # model.add(chain)
+
     locations = []
     with open("./temp.json", "r") as file:
         locations = json.load(file)
         file.close()
     print(len(locations))
-    i = 0
+    j=0
+
+
     for location in locations:
-        for model in pdb_struct:
-            for chain in model:
-                for residue in chain:
-                    for atom in residue:
-                        atom.set_coord(location[atom.get_name()])
+        pdb_struct = Structure.Structure("paritaprevir_beta")
+        model = Model.Model(1)
+        chain = Chain.Chain(1)
+        
+        residue = Residue.Residue(("A", 1, " "), "UNK", " ")
+        # atom = Atom.Atom()
+        i = 0
+        for sub_location in location.items():
+            print(sub_location)
+            i += 1
+            name = sub_location[0]
+            coords = sub_location[1]
+            atom = Atom.Atom(name = name, coord=coords, bfactor=0.0, occupancy=1.0, altloc=" ", fullname=name, serial_number=i, element = name[0])
+            # atom.set_coord(coords)
+            
+            residue.add(atom)
+        # for atom in residue.get_atoms():
+            # print(atom)
+        chain.add(residue)
+        
+        model.add(chain)
+        pdb_struct.add(model)
+        # for model in pdb_struct:
+        #     for chain in model:
+        #         for residue in chain:
+        #             for atom in residue:
+        #                 print(atom.get_name())
+        #                 atom.set_coord(location[atom.get_name()])
         io = PDBIO()
         io.set_structure(pdb_struct)
-        io.save(f"./kobe_conformers_large/kobe_conforge_{i}.pdb")
-        i+= 1
+        select = Select()
+        select.accept_model(model)
+        for atom in residue.get_atoms():
+            print(atom.get_coord())
+
+        
+        io.save(f"/Users/adam/Downloads/inputs_for_molec_replac/PAR_BETA_CONFORGE_TRIAL_1/paritaprevir_beta_conforge_{j}.pdb",select)
+        j+= 1
 
     
         # for location in locations:

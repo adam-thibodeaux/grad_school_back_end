@@ -65,7 +65,7 @@ max_time = 3600 # Max. allowed molecule processing time in seconds (default: 360
 
 mols = []  # Example list of BasicMolecules
 # reader = Biomol.FilePDBMoleculeReader("/Users/adam/Downloads/kobe0065.pdb")
-reader = Chem.MoleculeReader("./kobe0065.sdf")
+reader = Chem.MoleculeReader("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_fixed_bonds.sdf")
 
 mol = Chem.BasicMolecule()
 
@@ -87,9 +87,9 @@ status_to_str = { ConfGen.ReturnCode.UNINITIALIZED                  : 'uninitial
 conf_gen = ConfGen.ConformerGenerator()
 
 max_time = 7200 # Max. allowed molecule processing time in seconds (default: 3600 sec)
-min_rmsd = 0.02 # Output conformer RMSD threshold (default: 0.5)
+min_rmsd = 0.1 # Output conformer RMSD threshold (default: 0.5)
 e_window = 20 # Output conformer energy window (default: 20.0)
-max_confs = 1000 # Max. output ensemble size (default: 100)
+max_confs = 300 # Max. output ensemble size (default: 100)
 
 conf_gen.settings.timeout = max_time * 1000          # apply the -t argument
 conf_gen.settings.minRMSD = min_rmsd                 # apply the -r argument
@@ -124,9 +124,9 @@ try:
             # compose a simple molecule identifier
             mol_id = Chem.getName(mol).strip()
             if mol_id == '':
-                mol_id = '#' + 'kobe_0065' # fallback if name is empty
+                mol_id = '#' + 'paritaprevir' # fallback if name is empty
             else:
-                mol_id = '\'%s\' (#kobe_0065)' % (mol_id)
+                mol_id = '\'%s\' paritaprevir' % (mol_id)
 
             try:
                 #     with open("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb", "r") as file:

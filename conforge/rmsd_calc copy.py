@@ -179,8 +179,12 @@ if __name__ == "__main__":
     angle = 0
     
     input_struct = "/Users/adam/Downloads/inputs_for_molec_replac/SUG_CONFORGE_TRIAL_2/sugammadex_subunit_conforge_4.pdb"
-    core_struct = "/Users/adam/Downloads/inputs_for_molec_replac/sugam"
-    mol = Chem.MolFromPDBFile(input_struct, removeHs=True)
+    # core_struct = "/Users/adam/Downloads/inputs_for_molec_replac/sugammadex_core.mol"
+    mol = Chem.MolFromPDBFile(input_struct, removeHs=False)
+    
+    core_mol = Chem.MolFromSmarts("S-C-C-1O-C-C-C-C-1")
+    core_mol = Chem.RemoveAllHs(core_mol)
+    print(Chem.MolToSmiles(core_mol))
     centroid = rdMolTransforms.ComputeCentroid(mol.GetConformer())
     vol = 20
     center = [centroid.x, centroid.y, centroid.z + vol]
@@ -224,6 +228,7 @@ if __name__ == "__main__":
         # rotation = transform.Rotation.from_quat([np.cos(angle/2), center[0]* np.sin(angle/2),center[1]* np.sin(angle/2),center[2]* np.sin(angle/2)])
         
         mol = Chem.MolFromPDBFile(input_struct, removeHs=True)
+
         conf = mol.GetConformer()
         for atom in mol.GetAtoms():
             position = conf.GetAtomPosition(atom.GetIdx())
@@ -242,8 +247,18 @@ if __name__ == "__main__":
     print(atom_idx_matches_end)
     print(atom_idx_matches_start)
     combined_mols = Chem.RWMol(combined_mols)
+    match_structs = combined_mols.GetSubstructMatches(core_mol)
+   
+
     
-    Chem.SanitizeMol(combined_mols)
+
+    # mp =  rdForceFieldHelpers.MMFFGetMoleculeProperties(mol)
+            # ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(mol_ref, mp)
+            # for coord in coord_dict.items():
+            #     ff.MMFFAddPositionConstraint(coord[0], 0, 1.e4)
+            # ff.MMFFAddTorsionConstraint(atom_idx_dict[fixed_dihedral[0]],atom_idx_dict[fixed_dihedral[1]],atom_idx_dict[fixed_dihedral[2]],atom_idx_dict[fixed_dihedral[3]],False, 0.0,0.0,1.e4)
+            # ff.Minimize(maxIts=10000)
+    
     
     # rdForceFieldHelpers.MMFFOptimizeMolecule(combined_mols, maxIters=1000000)
     
@@ -252,7 +267,18 @@ if __name__ == "__main__":
     
     combined_mols.AddBond(atom_idx_matches_start[-1], atom_idx_matches_end[0], Chem.rdchem.BondType.SINGLE)
     combined_mols = AllChem.AssignBondOrdersFromTemplate(Chem.MolFromMolFile("/Users/adam/Downloads/inputs_for_molec_replac/sugammadex.mol"),combined_mols)
+    Chem.SanitizeMol(combined_mols)
     combined_mols = Chem.AddHs(combined_mols, addCoords=True)
+    conf = combined_mols.GetConformer()
+    mp =  rdForceFieldHelpers.MMFFGetMoleculeProperties(combined_mols)
+    ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(combined_mols, mp)
+    for match_indices in match_structs:
+        print(match_indices)
+        for match_idx in match_indices:
+            ff.MMFFAddPositionConstraint(match_idx, 0.1, 1.e4)
+            # continue
     # rdForceFieldHelpers.MMFFOptimizeMolecule(combined_mols, maxIters=1000000)
+    Chem.SanitizeMol(combined_mols)
+    ff.Minimize(maxIts=10000)
     Chem.MolToMolFile(combined_mols, "./test.mol")
     

@@ -94,17 +94,20 @@ def search_with_file(input_mtz, input_pdb, out_dir, identity=1, is_frag=False, f
         phaser_str = f"""/Applications/ccp4-9/bin/phaser << eof
     MODE MR_AUTO
     HKLIN {input_mtz}
-    ENSEMBLE par PDBFILE {input_pdb} IDENTITY 1
+    COMPOSITION ATOM C NUM 9
+    COMPOSITION ATOM O NUM 6
+    COMPOSITION ATOM S NUM 1
+    COMPOSITION ATOM H NUM 14
+    COMPOSITION ATOM Na NUM 1
+    ENSEMBLE par PDBFILE {input_pdb} IDENTITY 0.95
     ENSEMBLE par DISABLE CHECK ON
     ENSEMBLE par HETATM ON
     FORMFACTORS ELECTRON
-    PACK KEEP HIGH TFZ ON
+    PACK SELECT ALL
+    ELLG TARGET 100
     PURGE ROT ENABLE OFF
     PURGE TRA ENABLE OFF
     PURGE RNP ENABLE OFF
-    PACK SELECT ALL
-    PACK CUTOFF 100
-    ELLG TARGET 225
     SGALTERNATIVE SELECT ALL
     XYZOUT ON ENSEMBLE ON
     XYZOUT ON PACKING ON 
@@ -112,8 +115,6 @@ def search_with_file(input_mtz, input_pdb, out_dir, identity=1, is_frag=False, f
     KEYWORDS ON
     ZSCORE USE OFF
     ROOT {output_dir}/{out_dir}_out
-    SEARCH PRUNE OFF
-    RESOLUTION HIGH {high_resolution_limit}
     SEARCH ENSEMBLE par
     SEARCH METHOD FULL
     eof"""
@@ -181,16 +182,18 @@ def main_tfd(input_pdb, out_dir, output_dir, input_mtz_tfd=input_mtz, should_deb
     return search_with_file(input_mtz=input_mtz_tfd, input_pdb=input_pdb, out_dir=out_dir, output_dir=output_dir, should_debug=should_debug, high_resolution_limit = high_resolution_limit)
   
 if __name__ == "__main__":
-    output_dir = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CONFORGE_TRIAL_1_20A/"
-    input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta_20A.mtz"
-    input_dir = "/Users/adam/Downloads/inputs_for_molec_replac/PAR_BETA_CONFORGE_TRIAL_1"
+    output_dir = "/Users/adam/Downloads/outputs_from_molec_replac/SUG_CONFORGE_TRIAL_9/"
+    input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/sugammadex.mtz"
+    input_dir = "/Users/adam/Downloads/inputs_for_molec_replac/SUG_CONFORGE_TRIAL_15"
     sorted_dir_list = []
     for f in os.listdir(input_dir):
+        if f[0] == ".":
+            continue
         # if int(f.split("_")[-1].split(".pdb")[0]) > 350:
             # continue
         sorted_dir_list.append(f)
-        
-    sorted_dir_list = sorted(sorted_dir_list, key= lambda x : int(x.split("_")[-1].split(".pdb")[0]) )
+    print(sorted_dir_list)
+    # sorted_dir_list = sorted(sorted_dir_list, key= lambda x : int(x.split("_")[-1].split(".pdb")[0]) )
     timers = []
     for i in range(len(sorted_dir_list)):
         f = sorted_dir_list[i]

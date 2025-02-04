@@ -1,6 +1,7 @@
 import re
 from Bio.PDB import PDBIO, Structure, Model, Chain, Atom, PDBParser, Residue, Select
 import json
+from rdkit import Chem
 
 input_file_name = "./paritaprevir_conformers_trial_2.pdb"
 output_file_path = "./para_conformers_large_trial_2/paritaprevir_conforge_"
@@ -56,7 +57,7 @@ def create_native_pdb():
 
 
     for location in locations:
-        pdb_struct = Structure.Structure("paritaprevir_beta")
+        pdb_struct = Structure.Structure("sugammadex")
         model = Model.Model(1)
         chain = Chain.Chain(1)
         
@@ -64,11 +65,14 @@ def create_native_pdb():
         # atom = Atom.Atom()
         i = 0
         for sub_location in location.items():
-            print(sub_location)
-            i += 1
-            name = sub_location[0]
-            coords = sub_location[1]
-            atom = Atom.Atom(name = name, coord=coords, bfactor=0.0, occupancy=1.0, altloc=" ", fullname=name, serial_number=i, element = name[0])
+            try:
+                print(sub_location)
+                i += 1
+                name = sub_location[0]
+                coords = sub_location[1]
+                atom = Atom.Atom(name = name, coord=coords, bfactor=0.0, occupancy=1.0, altloc=" ", fullname=name, serial_number=i, element = name[0])
+            except:
+                continue
             # atom.set_coord(coords)
             
             residue.add(atom)
@@ -92,7 +96,7 @@ def create_native_pdb():
             print(atom.get_coord())
 
         
-        io.save(f"/Users/adam/Downloads/inputs_for_molec_replac/PAR_BETA_CONFORGE_TRIAL_1/paritaprevir_beta_conforge_{j}.pdb",select)
+        io.save(f"/Users/adam/Downloads/inputs_for_molec_replac/SUG_CONFORGE_TRIAL_2/sugammadex_subunit_conforge_{j}.pdb",select)
         j+= 1
 
     

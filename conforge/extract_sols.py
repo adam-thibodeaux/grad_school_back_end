@@ -113,7 +113,7 @@ def main(input_struct=input_struct, input_dir=input_dir, output_dir=output_dir, 
                 ""
             flat_solu_dict.append(temp_flat)
     df = pd.DataFrame(flat_solu_dict)
-    df.sort_values("llg_cross_sg", inplace=True, ascending=False)
+    df.sort_values("llg", inplace=True, ascending=False)
     if is_serving:
         app = Dash(__name__)
         app.layout = dash_table.DataTable(df.to_dict('records'), style_cell={'textAlign': 'left',

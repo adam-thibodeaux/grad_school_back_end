@@ -16,6 +16,7 @@ import subprocess
 import random
 import math
 import reorder_pdb
+from pathlib import Path
 def intersection(lst1, lst2):
     lst3 = [value for value in lst1 if value in lst2]
     return lst3
@@ -82,7 +83,7 @@ def setDihedralForOneBranch(rw_mol, conf, atom_indices, angle):
     rdMolTransforms.SetDihedralDeg(conf, *atom_indices, angle)
     for bnd in removed_bonds:
         rw_mol.AddBond(*bnd)
-def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, input_struct_path, should_proximity_bond=False, should_sanitize=True):
+def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, input_struct_path, should_proximity_bond=False, should_sanitize=True,should_use_electron_difference=False):
     # base_mol = Chem.MolFromPDBFile("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb")
     # base_mol = Chem.RemoveHs(base_mol)
     # bonds = base_mol.GetBonds()
@@ -248,7 +249,6 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
     # # print(found_dihedrals)
     # # print(atom_idx_dict)
     dihedral_angle_atom_indices = [[atom_idx_dict[atom_name] for atom_name in dihedral_angle_atom_names]]
-
     # for found_dihedral in found_dihedrals:
     #     orig_dihedral_angles.append(rdMolTransforms.GetDihedralDeg(base_mol.GetConformer(), *found_dihedral))
     for i in range(len(dihedral_angle_atom_indices)):
@@ -283,9 +283,16 @@ def main(dihedral_angle_atom_names, split_idx_atom_names, count, perturb_angle, 
             #             print(f'suspicious bond distance {dist} angstroms for: paritaprevir_torsion_angle_perturb_{count[0]}.pdb')
             #             print('skipping this one')
             #             return
+            rdForceFieldHelpers.MMFFOptimizeMolecule(base_mol)
             Chem.MolToPDBFile(base_mol, f"{output_conf_dir}paritaprevir_torsion_angle_perturb_{count[0]}.pdb", confId=comp_id_pos)
-        
-            return calc_new_fit(f"{output_conf_dir}paritaprevir_torsion_angle_perturb_{count[0]}.pdb",phaser_mtz,count, input_struct_path)
+            if should_use_electron_difference:
+
+                return calc_new_fit(f"{output_conf_dir}paritaprevir_torsion_angle_perturb_{count[0]}.pdb",phaser_mtz,count, input_struct_path)
+            else:  
+                # print(count)
+                # print([count[0],[0 for i in range(count[0])]])
+                return [count[0],0]
+            
         except Exception as e:
             print(e)
             print("failed setting explicit dihedral angle, using MMFF optimization")
@@ -464,8 +471,44 @@ def shell_source(script):
 def generate_conformers(count, step, dihedral_angle_atom_names, split_idx_atom_names, input_struct_path, should_proximity_bond=False):
 
     intensities = []
-    
-    for run_num in range(0,360,step):
+    print(dihedral_angle_atom_names)
+    # return
+    iter_start = 0
+    iter_end = 360
+    for amide in amide_bonds:
+        if dihedral_angle_atom_names[1] in amide and dihedral_angle_atom_names[2] in amide:
+            print('bond is an amide, enforcing trans planar geometry')
+            print(dihedral_angle_atom_names)
+            iter_start = 170
+            iter_end = 191
+            step = 10
+            mol = Chem.MolFromPDBFile(input_struct_path, removeHs=False)
+            atom_idx_dict = {}
+            
+            for atom in mol.GetAtoms():
+                atom_idx_dict[atom.GetMonomerInfo().GetName().strip()] = atom.GetIdx()
+                atom_idx_dict[str(atom.GetIdx())] = atom.GetMonomerInfo().GetName().strip()
+
+            for neighbor in mol.GetAtomWithIdx(atom_idx_dict[dihedral_angle_atom_names[1]]).GetNeighbors():
+                if "C" in dihedral_angle_atom_names[1]:
+                    if neighbor.GetAtomicNum() == 8:
+                        dihedral_angle_atom_names[0] = atom_idx_dict[str(neighbor.GetIdx())]
+                elif "N" in dihedral_angle_atom_names[1]:
+                    if neighbor.GetAtomicNum() == 1:
+                        dihedral_angle_atom_names[0] = atom_idx_dict[str(neighbor.GetIdx())]
+                        
+            for neighbor in mol.GetAtomWithIdx(atom_idx_dict[dihedral_angle_atom_names[2]]).GetNeighbors():
+                if "C" in dihedral_angle_atom_names[2]:
+                    if neighbor.GetAtomicNum() == 8:
+                        dihedral_angle_atom_names[3] = atom_idx_dict[str(neighbor.GetIdx())]
+                elif "N" in dihedral_angle_atom_names[2]:
+                    if neighbor.GetAtomicNum() == 1:
+                        dihedral_angle_atom_names[3] = atom_idx_dict[str(neighbor.GetIdx())]
+            print(dihedral_angle_atom_names)
+            break
+            
+
+    for run_num in range(iter_start,iter_end,step):
         count[0] += 1
         try:
             # print(count[0])
@@ -510,7 +553,7 @@ def extract_llg_and_tfz_and_update_init_path(input_dir, num_to_include=1):
         f.write(data.to_string())
         f.close()
     # data = data[data["tfz"] >= 5]
-    data.sort_values("llg", ascending=False, inplace=True)
+    data.sort_values(["llg","tfz"], ascending=[False,False], inplace=True)
     print(data.to_string())
     set_input_path_list = set()
     list_input_path_list = []
@@ -618,8 +661,11 @@ def rank_dihedrals(input_pdb_path_this):
     for final in allowed_dihed_angles:
         should_append = True
         for non_dupe in non_dupes:
-            if abs(final[-2] - non_dupe[-2]) < 0.05:
-                # print('duplicate dihedral found')
+            if abs(final[-2] - non_dupe[-2]) < 0.005:
+                print('duplicate dihedral found')
+                print(non_dupe[1],non_dupe[-2])
+                print(final[1],final[-2])
+                print(abs(final[-2] - non_dupe[-2]))
                 should_append = False
                 break
         if should_append:
@@ -627,7 +673,26 @@ def rank_dihedrals(input_pdb_path_this):
     for non_dupe in non_dupes:
         print(non_dupe[1])
         print(non_dupe[-2])
-    return non_dupes
+    non_dupes_amide_ordered = []
+    skip_idx = []
+    for j in range(len(non_dupes)):
+        non_dupe = non_dupes[j]
+        print(non_dupe[1])
+        for amide in amide_bonds:
+            if non_dupe[1][1] in amide and non_dupe[1][2] in amide:
+                print('bond is an amide, ranking first')
+                # print(non_dupe)
+                
+                non_dupes_amide_ordered.append(non_dupe)
+                skip_idx.append(j)
+    # print(amide_bonds)
+    # print(non_dupes_amide_ordered)
+    for j in range(len(non_dupes)):
+        if j in skip_idx:
+            continue
+        non_dupes_amide_ordered.append(non_dupes[j])
+
+    return non_dupes_amide_ordered
 
 def get_custom_diheds(input_struct_path_this_one):
 
@@ -700,6 +765,22 @@ def get_custom_diheds(input_struct_path_this_one):
             ret_list.append(([],[sub_sub_neighbor[0],sub_sub_neighbor[1],target_atom.GetMonomerInfo().GetName().strip(), out_neighbor],terminal_neighbors, 0,  True))
     print(ret_list)
     return ret_list
+def find_amides(mol):
+    print('finding amides')
+    amide_smiles = "C(=O)-N"
+    template_smiles = "Cc1cnc(cn1)C(=O)N[C@H]2CCCCC/C=C\\[C@@H]3C[C@]3(NC(=O)[C@@H]4C[C@H](CN4C2=O)Oc5c6ccccc6c7ccccc7n5)C(=O)NS(=O)(=O)C8CC8"
+    amide_query = Chem.MolFromSmarts(amide_smiles)
+    
+    template = Chem.MolFromSmiles(template_smiles)
+    mol = AllChem.AssignBondOrdersFromTemplate(template, mol)
+    matches = mol.GetSubstructMatches(amide_query)
+    atom_idx_dict = {}
+    for atom in mol.GetAtoms():
+        atom_idx_dict[atom.GetIdx()] = atom.GetMonomerInfo().GetName().strip()
+    matches = [[atom_idx_dict[match[0]],atom_idx_dict[match[1]],atom_idx_dict[match[2]]] for match in matches]
+    for match in matches:
+        print(match)
+    return matches
     
             
 
@@ -721,34 +802,51 @@ perturb_path =[1]
 #     num = random.randrange(len(sub_allowed))
 #     perturb_path.append(sub_allowed[num])
     
-input_struct_path = "/Users/adam/Downloads/inputs_for_molec_replac/PAR_CONFORGE_TRIAL_2/paritaprevir_alpha_conforge_127.pdb"
+input_struct_path = "/Users/adam/Downloads/inputs_for_molec_replac/PAR_BETA_CONFORGE_TRIAL_1/paritaprevir_beta_conforge_78.pdb"
 input_mtz = "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta_20A.mtz"
 monomer_library = "/Users/adam/Downloads/outputs_from_molec_replac/phenix_refine/eLBOW_65/elbow.UNK.001.cif"
+output_path = "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CUSTOM_CONF_TRIAL_5_20A"
+Path(output_path).mkdir(exist_ok=True, parents=True)
+with open(input_struct_path,"r") as f:
+    string = f.read()
+    input_struct_name = input_struct_path.split("/")[-1]
+    with open(f"{output_path}/{input_struct_name}","w") as new_f:
+        new_f.write(string)
+        new_f.close()
+    f.close()
+
 
 # perturb_path = get_custom_diheds(input_struct_path_this_one=input_struct_path)
 # perturb_path.append("REFINE")
+amide_bonds = find_amides(Chem.MolFromPDBFile(input_struct_path))
 perturb_path = rank_dihedrals(input_pdb_path_this=input_struct_path)
 perturb_path = list(filter(lambda x: x[-2] > -3, perturb_path))
+
 
 # perturb_path = [*perturb_path[1:]]
 perturb_path.append("REFINE")
 print(perturb_path)
 # print(len(perturb_path))
 for i in range(len(perturb_path)):
+    
+    # AllChem.AssignBondOrdersFromTemplate(tempalte, mol)
+
+    print(input_struct_path_list)
     # print(perturb_path[i][-2])
     print(perturb_path[i])
     #skipping dihedral angles that cause lots of overlap
-    if perturb_path[i] != "REFINE" and perturb_path[i][-2] < -5: 
+    if perturb_path[i] != "REFINE" and perturb_path[i][-2] < -3: 
         continue
-    output_conf_dir = f"/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CUSTOM_CONF_TRIAL_1_20A/ROUND_{i}/"
+    output_conf_dir = f"{output_path}/ROUND_{i}/"
     count = [0,[]]
     should_skip_conf_gen = False
     should_use_electron_difference = False
-    num_to_include = 2
+    num_to_include = 5
     if os.path.isdir(output_conf_dir) and len(os.listdir(output_conf_dir)) > 2:
         print(f"round {i} already complete, skipping conformer_generation")
         should_skip_conf_gen = True
     else:
+
         os.makedirs(output_conf_dir, exist_ok=True)
         os.makedirs(output_conf_dir + "PHASER", exist_ok=True)
     if perturb_path[i-1] == "REFINE":
@@ -927,7 +1025,7 @@ for i in range(len(perturb_path)):
             timers.append(timer)
             print(f'finished PHASER for {phaser_name} in {timer} seconds')
             print(f'approximate time remaining for this round {i} is: {((sum(timers)/len(timers)) * (len(sorted_output_conf) - k - 1))/60} minutes')
-        input_struct_path_list =extract_llg_and_tfz_and_update_init_path(output_conf_dir + "PHASER/", num_to_include=num_to_include)
+        input_struct_path_list = extract_llg_and_tfz_and_update_init_path(output_conf_dir + "PHASER/", num_to_include=num_to_include)
         if should_use_electron_difference:
             print("expected top 5 according to electron difference map")
             print(count[1][:5])

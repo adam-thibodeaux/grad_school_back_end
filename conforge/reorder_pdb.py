@@ -91,9 +91,9 @@ def reorder_atoms_v2(input_path, reference_path, output_path):
     rdkit.Chem.MolToPDBFile(new_pdb, output_path)
 
 if __name__ == '__main__':
-    reorder_atoms(
-       "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta.pdb",
-       "/Users/adam/Downloads/outputs_from_molec_replac/PAR_BETA_CUSTOM_CONF_TRIAL_1/ROUND_10/paritaprevir_torsion_angle_perturb_19_out.1_refine_001.pdb",
-        "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_beta_reordered.pdb",
+    reorder_atoms_v2(
+       "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha_reordered_2.pdb",
+       "/Users/adam/Downloads/outputs_from_molec_replac/phenix_refine/Refine_78/parateprevir_refine_078.pdb",
+        "/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha_reordered_2.pdb",
                   )
     # validate("/Users/adam/Downloads/inputs_for_molec_replac/PAR_CONFORGE_TRIAL_1/paritaprevir_alpha_conforge_78.pdb","/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha_reordered_2.pdb")

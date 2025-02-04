@@ -65,7 +65,8 @@ max_time = 3600 # Max. allowed molecule processing time in seconds (default: 360
 
 mols = []  # Example list of BasicMolecules
 # reader = Biomol.FilePDBMoleculeReader("/Users/adam/Downloads/kobe0065.pdb")
-reader = Chem.MoleculeReader("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_fixed_bonds.sdf")
+
+reader = Chem.MoleculeReader("/Users/adam/Downloads/inputs_for_molec_replac/sugammadex_sub_unit.mol")
 
 mol = Chem.BasicMolecule()
 
@@ -87,7 +88,7 @@ status_to_str = { ConfGen.ReturnCode.UNINITIALIZED                  : 'uninitial
 conf_gen = ConfGen.ConformerGenerator()
 
 max_time = 7200 # Max. allowed molecule processing time in seconds (default: 3600 sec)
-min_rmsd = 0.1 # Output conformer RMSD threshold (default: 0.5)
+min_rmsd = 0.5 # Output conformer RMSD threshold (default: 0.5)
 e_window = 20 # Output conformer energy window (default: 20.0)
 max_confs = 300 # Max. output ensemble size (default: 100)
 
@@ -124,9 +125,9 @@ try:
             # compose a simple molecule identifier
             mol_id = Chem.getName(mol).strip()
             if mol_id == '':
-                mol_id = '#' + 'paritaprevir' # fallback if name is empty
+                mol_id = '#' + 'suggamadex' # fallback if name is empty
             else:
-                mol_id = '\'%s\' paritaprevir' % (mol_id)
+                mol_id = '\'%s\' sugammadex' % (mol_id)
 
             try:
                 #     with open("/Users/adam/Downloads/inputs_for_molec_replac/paritaprevir_alpha.pdb", "r") as file:
@@ -182,12 +183,17 @@ try:
                 #     file.close()
                 # check for severe error reported by status code
                 atoms = mol.getAtoms()
-                
+                writer = Chem.MolecularGraphWriter("./test.sdf") 
+                if not writer.write(mol):
+                    print('failed')
+                    break
+                # continue
                 for i in range(num_confs):
                     count = {}
                     sub_location = {}
                     for atom in atoms:
                         atom_name = Chem.getSymbol(atom)
+                        # print(atom_name)
                         count[atom_name] = count.get(atom_name, 0) + 1
                         coords = Chem.getConformer3DCoordinates(atom, i)
                         sub_location[f"{atom_name}{count[atom_name]}"] = [coords.getElement(0), coords.getElement(1), coords.getElement(2)]
@@ -208,5 +214,6 @@ try:
                 sys.exit('Error: processing of molecule failed: ' + str(e))
 except Exception as e: # handle exception raised in case of severe read errors
     sys.exit('Error: reading molecule failed: ' + str(e))
+
 
 
